@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type ReleaseConfigItem struct {
 	ReleasePrefix string `yaml:"releasePrefix,omitempty"`
 }
 
-func readConf(filename string) (*ReleaseConfig, error) {
+func ReadConf(filename string) (*ReleaseConfig, error) {
 	buf, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err

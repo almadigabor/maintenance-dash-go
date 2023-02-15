@@ -1,4 +1,4 @@
-package appmetrics
+package metrics
 
 import (
 	"net/http"
@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func CreateAppsVersionMetrics(appsVersionInfo []data.AppVersionInfo) http.Handler {
+func CreateAppsVersionMetrics(appsVersionInfo []*data.AppVersionInfo) http.Handler {
 	// get rid of the default metrics
 	r := prometheus.NewRegistry()
 	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
@@ -18,7 +18,7 @@ func CreateAppsVersionMetrics(appsVersionInfo []data.AppVersionInfo) http.Handle
 	return handler
 }
 
-func addAppMetrics(collector *prometheus.Registry, appsVersionInfo []data.AppVersionInfo) {
+func addAppMetrics(collector *prometheus.Registry, appsVersionInfo []*data.AppVersionInfo) {
 	for _, appVersionInfo := range appsVersionInfo {
 		var latestMajorVersion, latestMinorVersion, latestPatchVersion string
 

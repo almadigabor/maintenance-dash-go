@@ -1,9 +1,8 @@
 module github.com/almadigabor/maintenance-dash-go
 
-go 1.19
+go 1.20
 
 require (
-	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/prometheus/client_golang v1.14.0
@@ -11,7 +10,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/client-go v0.26.1
-	newreleases.io/newreleases v1.10.0
 )
 
 require (

@@ -2,16 +2,21 @@ package main
 
 import (
 	"flag"
+	"net/http"
 
 	// "encoding/json"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/almadigabor/maintenance-dash-go/pkg/data"
+	"github.com/almadigabor/maintenance-dash-go/pkg/latestversions"
+	"github.com/almadigabor/maintenance-dash-go/pkg/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
 var (
-	cluster    *bool
-	kubeconfig *string
+	cluster         *bool
+	kubeconfig      *string
+	appsVersionInfo []*data.AppVersionInfo = make([]*data.AppVersionInfo, 0)
 )
 
 type Versions []semver.Version
@@ -27,12 +32,12 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	parseFlags()
 
-	c, err := readConf("config.yaml")
+	c, err := data.ReadConf("config.yaml")
 	if err != nil {
 		panic(err.Error())
 	}
 
-	listPublicRepos(c)
+	appsVersionInfo = latestversions.GetAppLatestVersions(c)
 
 	//clientSet := currentversions.GetClientSet(*cluster, *kubeconfig)
 	//nodes, _ := clientSet.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
@@ -42,8 +47,10 @@ func main() {
 	//}
 	//
 	//appsVersionInfo := make([]data.AppVersionInfo, 0)
-	//prometheusHandler := appmetrics.CreateAppsVersionMetrics(appsVersionInfo)
-	//// setup metrics endpoint and start server
-	//http.Handle("/metrics", prometheusHandler)
-	//http.ListenAndServe(":2112", nil)
+	prometheusHandler := metrics.CreateAppsVersionMetrics(appsVersionInfo)
+	// setup metrics endpoint and start server
+	http.Handle("/metrics", prometheusHandler)
+	port := ":2112"
+	log.Infof("Starting listening on %v", port)
+	http.ListenAndServe(port, nil)
 }

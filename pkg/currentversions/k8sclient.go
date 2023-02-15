@@ -1,6 +1,7 @@
 package currentversions
 
 import (
+	"github.com/almadigabor/maintenance-dash-go/pkg/data"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -32,4 +33,8 @@ func GetClientSet(cluster bool, kubeconfig string) *kubernetes.Clientset {
 		panic(err.Error())
 	}
 	return clientset
+}
+
+func GetNodeVersionInfo(appVersionInfo []*data.AppVersionInfo) {
+
 }
