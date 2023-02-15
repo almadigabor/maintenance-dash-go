@@ -1,0 +1,26 @@
+apps:
+  - orgName: argoproj
+    repoName: argo-cd
+  - orgName: argoproj-labs
+    repoName: argocd-vault-plugin
+  - orgName: cert-manager
+    repoName: cert-manager
+  - orgName: kubernetes
+    repoName: ingress-nginx
+    releasePrefix: helm-chart
+  - orgName: prometheus-community
+    repoName: helm-charts
+    releasePrefix: kube-prometheus-stack
+  - orgName: kyverno
+    repoName: kyverno
+  - orgName: catenax-ng
+    repoName: k8s-helm-example
+    releasePrefix: k8s-landing-page
+  - orgName: grafana
+    repoName: helm-charts
+    releasePrefix: loki-stack
+  - orgName: dexidp
+    repoName: helm-charts
+    releasePrefix: dex
+  - orgName: hashicorp
+    repoName: vault-helm
