@@ -2,7 +2,6 @@ package currentversions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/almadigabor/maintenance-dash-go/internal/data"
 	"github.com/almadigabor/maintenance-dash-go/internal/parseversion"
@@ -27,19 +26,28 @@ func GetCurrentVersions(ctx context.Context, cluster bool, kubeconfig string) []
 	var result []*data.AppVersionInfo
 
 	for _, node := range nodes.Items {
-		semverVersion := parseversion.ToSemver(node.Status.NodeInfo.KubeletVersion)
-		result = append(result, &data.AppVersionInfo{
-			CurrentVersion:  semverVersion,
-			NewReleasesName: node.ObjectMeta.Annotations["maintenance/releasename"],
-		})
+		semverVersion, err := parseversion.ToSemver(node.Status.NodeInfo.KubeletVersion)
+		if err != nil {
+			log.Warnf("Skipping invalid version: %v\n", node.Status.NodeInfo.KubeletVersion)
+		} else {
+			result = append(result, &data.AppVersionInfo{
+				CurrentVersion:  semverVersion,
+				NewReleasesName: node.ObjectMeta.Annotations["maintenance/releasename"],
+			})
+		}
 	}
 
 	for _, service := range services.Items {
-		semverVersion := parseversion.ToSemver(service.ObjectMeta.Labels["app.kubernetes.io/version"])
-		result = append(result, &data.AppVersionInfo{
-			CurrentVersion:  semverVersion,
-			NewReleasesName: service.ObjectMeta.Annotations["maintenance/releasename"],
-		})
+		versionLabel := service.ObjectMeta.Labels["app.kubernetes.io/version"]
+		semverVersion, err := parseversion.ToSemver(versionLabel)
+		if err != nil {
+			log.Warnf("Skipping invalid version: %v\n", versionLabel)
+		} else {
+			result = append(result, &data.AppVersionInfo{
+				CurrentVersion:  semverVersion,
+				NewReleasesName: service.ObjectMeta.Annotations["maintenance/releasename"],
+			})
+		}
 	}
 
 	return result
@@ -84,9 +92,6 @@ func getSvcsToScan(ctx context.Context, clientSet *kubernetes.Clientset) *corev1
 
 	if err != nil {
 		log.Errorf("Unable to get services to scan: %v", err)
-	}
-	for _, svc := range services.Items {
-		fmt.Printf("%v chart: %v", svc.Name, svc.ObjectMeta.Labels["helm.sh/chart"])
 	}
 
 	return services

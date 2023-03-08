@@ -5,12 +5,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ToSemver(version string) *semver.Version {
+func ToSemver(version string) (*semver.Version, error) {
 	v, err := semver.NewVersion(version)
 	if err != nil {
 		log.Errorf("Unable to parse version: %v. Error message: %v\n", version, err)
-		return nil
+		return nil, err
 	}
 
-	return v
+	return v, nil
 }

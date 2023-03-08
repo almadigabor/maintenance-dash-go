@@ -36,8 +36,10 @@ func GetForApp(appVersionInfo data.AppVersionInfo) *data.AppVersionInfo {
 		}
 
 		for _, release := range releases {
-			parsedVersion := parseversion.ToSemver(release.Version)
-			if parsedVersion.Prerelease() == "" {
+			parsedVersion, err := parseversion.ToSemver(release.Version)
+			if err != nil {
+				log.Warningf("Skipping invalid version: %v\n", release.Version)
+			} else if parsedVersion.Prerelease() == "" {
 				vs = append(vs, parsedVersion)
 			}
 		}
@@ -113,8 +115,12 @@ func GetLatestVersionsForApp(projectID string) semver.Collection {
 		}
 
 		for _, release := range releases {
-			parsedVersion := parseversion.ToSemver(release.Version)
-			vs = append(vs, parsedVersion)
+			parsedVersion, err := parseversion.ToSemver(release.Version)
+			if err != nil {
+				log.Warningf("Skipping invalid version: %v\n", release.Version)
+			} else {
+				vs = append(vs, parsedVersion)
+			}
 		}
 
 		if i >= lastPage {

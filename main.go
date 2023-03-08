@@ -4,10 +4,10 @@ import (
 	"context"
 	"flag"
 	"net/http"
+	"time"
 
 	// "encoding/json"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/almadigabor/maintenance-dash-go/internal/currentversions"
 	"github.com/almadigabor/maintenance-dash-go/internal/data"
 	"github.com/almadigabor/maintenance-dash-go/internal/latestversions"
@@ -16,12 +16,11 @@ import (
 )
 
 var (
-	cluster         *bool
-	kubeconfig      *string
-	appsVersionInfo []*data.AppVersionInfo = make([]*data.AppVersionInfo, 0)
+	cluster    *bool
+	kubeconfig *string
 )
 
-type Versions []semver.Version
+const refreshIntervalInSeconds = 10 //5 * 60
 
 func parseFlags() {
 	// initialize flags
@@ -30,19 +29,29 @@ func parseFlags() {
 	flag.Parse()
 }
 
+func syncAppsVersionInfo() {
+	for {
+		ctx := context.Background()
+		var appsVersionInfo []*data.AppVersionInfo
+		appCurrentInfos := currentversions.GetCurrentVersions(ctx, *cluster, *kubeconfig)
+
+		for _, appCurrentInfo := range appCurrentInfos {
+			appVersionInfo := latestversions.GetForApp(*appCurrentInfo)
+			appsVersionInfo = append(appsVersionInfo, appVersionInfo)
+		}
+
+		metrics.UpdateMetrics(appsVersionInfo)
+		time.Sleep(time.Duration(refreshIntervalInSeconds * float64(time.Second)))
+	}
+}
+
 func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	parseFlags()
 
-	ctx := context.Background()
-	appCurrentInfos := currentversions.GetCurrentVersions(ctx, *cluster, *kubeconfig)
+	go syncAppsVersionInfo()
 
-	for _, appCurrentInfo := range appCurrentInfos {
-		appVersionInfo := latestversions.GetForApp(*appCurrentInfo)
-		appsVersionInfo = append(appsVersionInfo, appVersionInfo)
-	}
-
-	prometheusHandler := metrics.CreateAppsVersionMetrics(appsVersionInfo)
+	prometheusHandler := metrics.CreateMetrics()
 	// setup metrics endpoint and start server
 	http.Handle("/metrics", prometheusHandler)
 	port := ":2112"
