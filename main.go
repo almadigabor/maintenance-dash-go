@@ -2,14 +2,15 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 
 	// "encoding/json"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/almadigabor/maintenance-dash-go/pkg/data"
-	"github.com/almadigabor/maintenance-dash-go/pkg/latestversions"
-	"github.com/almadigabor/maintenance-dash-go/pkg/metrics"
+	"github.com/almadigabor/maintenance-dash-go/internal/data"
+	"github.com/almadigabor/maintenance-dash-go/internal/latestversions"
+	"github.com/almadigabor/maintenance-dash-go/internal/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -34,19 +35,21 @@ func main() {
 
 	c, err := data.ReadConf("config.yaml")
 	if err != nil {
-		panic(err.Error())
+		log.Panic(err.Error())
 	}
 
-	appsVersionInfo = latestversions.GetAppLatestVersions(c)
+	//ctx := context.Background()
+	//clientSet := currentversions.NewClientSet(*cluster, *kubeconfig)
 
-	//clientSet := currentversions.GetClientSet(*cluster, *kubeconfig)
-	//nodes, _ := clientSet.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
-	//
-	//for _, node := range nodes.Items {
-	//	fmt.Printf("%s: %s\n", node.Name, node.Status.NodeInfo.KubeletVersion)
-	//}
-	//
-	//appsVersionInfo := make([]data.AppVersionInfo, 0)
+	projectInfos := latestversions.GetAllProjects()
+	for _, pi := range projectInfos {
+		fmt.Println(pi.ReleaseName)
+	}
+	//currentversions.GetSvcsToScan(ctx, clientSet)
+	//currentversions.AddK8sNodeVersionInfo(ctx, clientSet, appsVersionInfo)
+
+	appsVersionInfo = append(appsVersionInfo, latestversions.GetAppLatestVersions(c)...)
+
 	prometheusHandler := metrics.CreateAppsVersionMetrics(appsVersionInfo)
 	// setup metrics endpoint and start server
 	http.Handle("/metrics", prometheusHandler)

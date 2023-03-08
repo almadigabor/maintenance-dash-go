@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/almadigabor/maintenance-dash-go/pkg/data"
+	"github.com/almadigabor/maintenance-dash-go/internal/data"
 	"github.com/google/go-github/github"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"

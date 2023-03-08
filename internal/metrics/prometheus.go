@@ -3,7 +3,7 @@ package metrics
 import (
 	"net/http"
 
-	"github.com/almadigabor/maintenance-dash-go/pkg/data"
+	"github.com/almadigabor/maintenance-dash-go/internal/data"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
