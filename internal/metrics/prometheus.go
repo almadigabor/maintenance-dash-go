@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Add metrics http handler
 func CreateAppsVersionMetrics(appsVersionInfo []*data.AppVersionInfo) http.Handler {
 	// get rid of the default metrics
 	r := prometheus.NewRegistry()
@@ -18,6 +19,7 @@ func CreateAppsVersionMetrics(appsVersionInfo []*data.AppVersionInfo) http.Handl
 	return handler
 }
 
+// Create Gauge type metrics for all applications
 func addAppMetrics(collector *prometheus.Registry, appsVersionInfo []*data.AppVersionInfo) {
 	for _, appVersionInfo := range appsVersionInfo {
 		var latestMajorVersion, latestMinorVersion, latestPatchVersion string
@@ -36,7 +38,7 @@ func addAppMetrics(collector *prometheus.Registry, appsVersionInfo []*data.AppVe
 			Name: "app_version_info",
 			Help: "Information about an application containing the current, latest major, latest minor, latest patch versions.",
 			ConstLabels: prometheus.Labels{
-				"appName":            appVersionInfo.AppName,
+				"appName":            appVersionInfo.NewReleasesName,
 				"currentVersion":     appVersionInfo.CurrentVersion.String(),
 				"latestMajorVersion": latestMajorVersion,
 				"latestMinorVersion": latestMinorVersion,

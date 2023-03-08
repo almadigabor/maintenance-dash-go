@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"net/http"
 
 	// "encoding/json"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/almadigabor/maintenance-dash-go/internal/currentversions"
 	"github.com/almadigabor/maintenance-dash-go/internal/data"
 	"github.com/almadigabor/maintenance-dash-go/internal/latestversions"
 	"github.com/almadigabor/maintenance-dash-go/internal/metrics"
@@ -33,22 +34,13 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	parseFlags()
 
-	c, err := data.ReadConf("config.yaml")
-	if err != nil {
-		log.Panic(err.Error())
+	ctx := context.Background()
+	appCurrentInfos := currentversions.GetCurrentVersions(ctx, *cluster, *kubeconfig)
+
+	for _, appCurrentInfo := range appCurrentInfos {
+		appVersionInfo := latestversions.GetForApp(*appCurrentInfo)
+		appsVersionInfo = append(appsVersionInfo, appVersionInfo)
 	}
-
-	//ctx := context.Background()
-	//clientSet := currentversions.NewClientSet(*cluster, *kubeconfig)
-
-	projectInfos := latestversions.GetAllProjects()
-	for _, pi := range projectInfos {
-		fmt.Println(pi.ReleaseName)
-	}
-	//currentversions.GetSvcsToScan(ctx, clientSet)
-	//currentversions.AddK8sNodeVersionInfo(ctx, clientSet, appsVersionInfo)
-
-	appsVersionInfo = append(appsVersionInfo, latestversions.GetAppLatestVersions(c)...)
 
 	prometheusHandler := metrics.CreateAppsVersionMetrics(appsVersionInfo)
 	// setup metrics endpoint and start server

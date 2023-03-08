@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/almadigabor/maintenance-dash-go/internal/data"
+	"github.com/almadigabor/maintenance-dash-go/internal/parseversion"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -14,8 +15,38 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// example command 'kubectl get deployments,statefulsets,daemonsets -A -o go-template --template '{{range .items}}{{index .metadata.labels "app.kubernetes.io/name"}} {{index .metadata.labels "app.kubernetes.io/version"}} {{"\n"}}{{end}}”
-func NewClientSet(cluster bool, kubeconfig string) *kubernetes.Clientset {
+// Returns the versions of nodes and labeled services
+func GetCurrentVersions(ctx context.Context, cluster bool, kubeconfig string) []*data.AppVersionInfo {
+	clientSet := newClientSet(cluster, kubeconfig)
+	services := getSvcsToScan(ctx, clientSet)
+	nodes, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("Unable to get node info: %v", err)
+	}
+
+	var result []*data.AppVersionInfo
+
+	for _, node := range nodes.Items {
+		semverVersion := parseversion.ToSemver(node.Status.NodeInfo.KubeletVersion)
+		result = append(result, &data.AppVersionInfo{
+			CurrentVersion:  semverVersion,
+			NewReleasesName: node.ObjectMeta.Annotations["maintenance/releasename"],
+		})
+	}
+
+	for _, service := range services.Items {
+		semverVersion := parseversion.ToSemver(service.ObjectMeta.Labels["app.kubernetes.io/version"])
+		result = append(result, &data.AppVersionInfo{
+			CurrentVersion:  semverVersion,
+			NewReleasesName: service.ObjectMeta.Annotations["maintenance/releasename"],
+		})
+	}
+
+	return result
+}
+
+// Initializes new ClientSet either based on kubeconfig or in-cluster
+func newClientSet(cluster bool, kubeconfig string) *kubernetes.Clientset {
 	if !cluster {
 
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
@@ -43,27 +74,20 @@ func NewClientSet(cluster bool, kubeconfig string) *kubernetes.Clientset {
 	return cs
 }
 
-func GetSvcsToScan(ctx context.Context, clientSet *kubernetes.Clientset) {
+// Get services annotated with maintenance/scan=true
+func getSvcsToScan(ctx context.Context, clientSet *kubernetes.Clientset) *corev1.ServiceList {
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"maintenance/scan": "true"}}
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	}
-	services, _ := clientSet.CoreV1().Services("").List(ctx, listOptions)
+	services, err := clientSet.CoreV1().Services("").List(ctx, listOptions)
+
+	if err != nil {
+		log.Errorf("Unable to get services to scan: %v", err)
+	}
 	for _, svc := range services.Items {
 		fmt.Printf("%v chart: %v", svc.Name, svc.ObjectMeta.Labels["helm.sh/chart"])
 	}
-}
 
-func AddK8sNodeVersionInfo(ctx context.Context, clientSet *kubernetes.Clientset, appsVersionInfo *[]data.AppVersionInfo) {
-	nodes, _ := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	for _, node := range nodes.Items {
-		v, err := semver.NewVersion(node.Status.NodeInfo.KubeletVersion)
-		if err != nil {
-			log.Warnf("Unable to parse kubernetes node version: %v", node.Status.NodeInfo.KubeletVersion)
-		}
-		*appsVersionInfo = append(*appsVersionInfo, data.AppVersionInfo{
-			AppName:        "kubernetes",
-			CurrentVersion: v,
-		})
-	}
+	return services
 }

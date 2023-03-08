@@ -2,12 +2,14 @@ package latestversions
 
 import (
 	"context"
-	"log"
 	"os"
 	"sort"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Masterminds/semver/v3"
+	"github.com/almadigabor/maintenance-dash-go/internal/data"
 	"github.com/almadigabor/maintenance-dash-go/internal/parseversion"
 	"newreleases.io/newreleases"
 )
@@ -21,6 +23,55 @@ var (
 	NewReleasesApiKey = os.Getenv("NEWREKEASES_API_KEY")
 )
 
+// Get stable releases for an app from NewReleases.io, parse them to semver and compare to current version
+func GetForApp(appVersionInfo data.AppVersionInfo) *data.AppVersionInfo {
+	client := newreleases.NewClient(NewReleasesApiKey, nil)
+	ctx := context.Background()
+	vs := []*semver.Version{}
+
+	for i := 1; i < 10; i++ {
+		releases, lastPage, err := client.Releases.ListByProjectName(ctx, "github", appVersionInfo.NewReleasesName, i)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		for _, release := range releases {
+			parsedVersion := parseversion.ToSemver(release.Version)
+			if parsedVersion.Prerelease() == "" {
+				vs = append(vs, parsedVersion)
+			}
+		}
+
+		if i >= lastPage {
+			break
+		}
+	}
+
+	sort.Sort(sort.Reverse(semver.Collection(vs)))
+	latestMajorVersion := vs[0]
+	var latestMinorVersion *semver.Version
+	var latestPatchVersion *semver.Version
+
+	for i := 0; i < len(vs); i++ {
+		if latestMinorVersion == nil && vs[i].Major() == appVersionInfo.CurrentVersion.Major() {
+			latestMinorVersion = vs[i]
+		}
+
+		if latestPatchVersion == nil && vs[i].Major() == appVersionInfo.CurrentVersion.Major() && vs[i].Minor() == appVersionInfo.CurrentVersion.Minor() {
+			latestPatchVersion = vs[i]
+		}
+	}
+
+	return &data.AppVersionInfo{
+		NewReleasesName:    appVersionInfo.NewReleasesName,
+		CurrentVersion:     appVersionInfo.CurrentVersion,
+		LatestMajorVersion: latestMajorVersion,
+		LatestMinorVersion: latestMinorVersion,
+		LatestPatchVersion: latestPatchVersion,
+	}
+}
+
+// Get all the projects added to the newreleases account and parse them to ProjectInfo struct
 func GetAllProjects() []ProjectInfo {
 	client := newreleases.NewClient(NewReleasesApiKey, nil)
 	ctx := context.Background()
@@ -49,15 +100,14 @@ func GetAllProjects() []ProjectInfo {
 	return pi
 }
 
-func GetSortedVersionsForApp(projectID string) []*semver.Version {
+// Get max 10 pages of releases for an app and parse versions to semVer
+func GetLatestVersionsForApp(projectID string) semver.Collection {
 	client := newreleases.NewClient(NewReleasesApiKey, nil)
 	ctx := context.Background()
 	vs := []*semver.Version{}
 
-	page := 1
-
-	for {
-		releases, lastPage, err := client.Releases.ListByProjectID(ctx, projectID, 1)
+	for i := 1; i < 10; i++ {
+		releases, lastPage, err := client.Releases.ListByProjectID(ctx, projectID, i)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -67,12 +117,10 @@ func GetSortedVersionsForApp(projectID string) []*semver.Version {
 			vs = append(vs, parsedVersion)
 		}
 
-		if page >= lastPage {
+		if i >= lastPage {
 			break
 		}
-		page++
 	}
 
-	sort.Sort(sort.Reverse(semver.Collection(vs)))
 	return vs
 }
